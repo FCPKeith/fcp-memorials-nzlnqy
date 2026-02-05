@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
@@ -12,23 +12,24 @@ export default function ScannerScreen() {
   const [scanned, setScanned] = useState(false);
   const [showInvalidQRModal, setShowInvalidQRModal] = useState(false);
   const router = useRouter();
+  const hasRequestedPermission = useRef(false);
 
-  console.log('ScannerScreen: Rendered');
+  console.log('ScannerScreen: Rendered, permission status:', permission?.status);
 
   useEffect(() => {
-    if (permission && !permission.granted && permission.canAskAgain) {
-      console.log('ScannerScreen: Requesting camera permission');
+    // Only request permission once when component mounts
+    // Check if permission is not granted and we haven't requested it yet
+    if (permission && !permission.granted && !hasRequestedPermission.current) {
+      console.log('ScannerScreen: Requesting camera permission (one time)');
+      hasRequestedPermission.current = true;
       requestPermission();
     }
-  }, [permission]);
+  }, [permission?.granted, permission?.status]); // Only depend on specific properties
 
   const handleBarCodeScanned = ({ data }: { data: string }) => {
     console.log('[Scanner] QR code scanned:', data);
     setScanned(true);
 
-    // Extract memorial ID or public URL from the scanned data
-    // Expected format: https://fcpmemorials.com/memorial/john-doe-1945
-    // or just the memorial ID
     const memorialId = extractMemorialId(data);
     
     if (memorialId) {
@@ -55,7 +56,9 @@ export default function ScannerScreen() {
     return null;
   };
 
+  // Loading state - permission hasn't been loaded yet
   if (!permission) {
+    console.log('ScannerScreen: Permission loading...');
     return (
       <View style={[commonStyles.container, styles.centerContent]}>
         <Text style={commonStyles.body}>Loading camera...</Text>
@@ -63,7 +66,9 @@ export default function ScannerScreen() {
     );
   }
 
+  // Permission denied state
   if (!permission.granted) {
+    console.log('ScannerScreen: Permission not granted');
     return (
       <View style={[commonStyles.container, styles.centerContent]}>
         <IconSymbol
@@ -77,13 +82,21 @@ export default function ScannerScreen() {
         <Text style={[commonStyles.body, styles.centerText, styles.description]}>
           FCP Memorials needs camera access to scan QR codes at memorial sites.
         </Text>
-        <TouchableOpacity style={commonStyles.button} onPress={requestPermission}>
+        <TouchableOpacity 
+          style={commonStyles.button} 
+          onPress={() => {
+            console.log('ScannerScreen: User manually requesting permission');
+            requestPermission();
+          }}
+        >
           <Text style={commonStyles.buttonText}>Grant Permission</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
+  // Camera granted - show scanner
+  console.log('ScannerScreen: Permission granted, showing camera');
   return (
     <View style={commonStyles.container}>
       <CameraView
@@ -116,7 +129,10 @@ export default function ScannerScreen() {
             {scanned && (
               <TouchableOpacity
                 style={[commonStyles.button, styles.rescanButton]}
-                onPress={() => setScanned(false)}
+                onPress={() => {
+                  console.log('ScannerScreen: Resetting scan state');
+                  setScanned(false);
+                }}
               >
                 <Text style={commonStyles.buttonText}>Scan Again</Text>
               </TouchableOpacity>
@@ -128,6 +144,7 @@ export default function ScannerScreen() {
       <Modal
         visible={showInvalidQRModal}
         onClose={() => {
+          console.log('ScannerScreen: Closing invalid QR modal');
           setShowInvalidQRModal(false);
           setScanned(false);
         }}
@@ -137,6 +154,7 @@ export default function ScannerScreen() {
           {
             text: 'Try Again',
             onPress: () => {
+              console.log('ScannerScreen: User tapped Try Again');
               setShowInvalidQRModal(false);
               setScanned(false);
             },
