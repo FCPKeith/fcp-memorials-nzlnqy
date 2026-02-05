@@ -1,0 +1,42 @@
+CREATE TABLE "memorial_requests" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"requester_name" text NOT NULL,
+	"requester_email" text NOT NULL,
+	"loved_one_name" text NOT NULL,
+	"birth_date" date,
+	"death_date" date,
+	"story_notes" text NOT NULL,
+	"media_uploads" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"location_info" text,
+	"latitude" numeric(10, 8),
+	"longitude" numeric(11, 8),
+	"tier_selected" text NOT NULL,
+	"discount_requested" boolean DEFAULT false NOT NULL,
+	"discount_type" text,
+	"documentation_upload" text,
+	"payment_status" text DEFAULT 'pending' NOT NULL,
+	"payment_amount" numeric(10, 2) NOT NULL,
+	"stripe_payment_id" text,
+	"request_status" text DEFAULT 'submitted' NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "memorials" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"full_name" text NOT NULL,
+	"birth_date" date,
+	"death_date" date,
+	"story_text" text NOT NULL,
+	"photos" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"video_link" text,
+	"audio_narration_link" text,
+	"latitude" numeric(10, 8),
+	"longitude" numeric(11, 8),
+	"location_visibility" text DEFAULT 'exact' NOT NULL,
+	"qr_code_url" text NOT NULL,
+	"public_url" text NOT NULL,
+	"published_status" boolean DEFAULT false NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "memorials_public_url_unique" UNIQUE("public_url")
+);
