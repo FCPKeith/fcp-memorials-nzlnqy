@@ -26,6 +26,7 @@ interface RequestFormData {
   tier_selected: 'basic' | 'standard' | 'premium';
   discount_requested: boolean;
   discount_type?: 'military' | 'first_responder';
+  country?: string;
 }
 
 const TIER_PRICES = {
@@ -46,6 +47,7 @@ export default function RequestMemorialScreen() {
     location_info: '',
     tier_selected: 'standard',
     discount_requested: false,
+    country: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +64,10 @@ export default function RequestMemorialScreen() {
   };
 
   const handleSubmit = async () => {
-    console.log('[RequestMemorial] Submitting request');
+    console.log('[RequestMemorial] Submitting request with data:', {
+      ...formData,
+      story_notes: formData.story_notes.substring(0, 50) + '...' // Truncate for logging
+    });
 
     // Validation
     if (!formData.requester_name || !formData.requester_email || !formData.loved_one_name || !formData.story_notes) {
@@ -76,7 +81,8 @@ export default function RequestMemorialScreen() {
 
     try {
       const response = await apiPost<{ id: string; payment_amount: number }>('/api/memorial-requests', formData);
-      console.log('[RequestMemorial] Request submitted successfully:', response);
+      console.log('[RequestMemorial] Request submitted successfully. Email notification will be sent to floatincoffin@icloud.com');
+      console.log('[RequestMemorial] Response:', response);
       setRequestId(response.id);
       setShowSuccessModal(true);
     } catch (err) {
@@ -177,6 +183,15 @@ export default function RequestMemorialScreen() {
             value={formData.location_info}
             onChangeText={(text) => setFormData({ ...formData, location_info: text })}
             placeholder="Cemetery or memorial location"
+            placeholderTextColor={colors.textTertiary}
+          />
+
+          <Text style={styles.label}>Country (Optional)</Text>
+          <TextInput
+            style={styles.input}
+            value={formData.country}
+            onChangeText={(text) => setFormData({ ...formData, country: text })}
+            placeholder="Country"
             placeholderTextColor={colors.textTertiary}
           />
         </View>
@@ -285,7 +300,7 @@ export default function RequestMemorialScreen() {
           router.back();
         }}
         title="Request Submitted"
-        message={`Your memorial request has been submitted successfully. Request ID: ${requestId}. You will receive payment instructions via email.`}
+        message={`Your memorial request has been submitted successfully. Request ID: ${requestId}. An email notification has been sent to FCP Memorials, and you will receive payment instructions via email shortly.`}
         buttons={[
           {
             text: 'Done',
