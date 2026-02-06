@@ -21,6 +21,10 @@ interface MemorialRequestEmailData {
   payment_amount: number;
   created_at: Date;
   country: string | null;
+  // Memorial data (included after publishing)
+  memorial_id?: string;
+  public_url?: string;
+  qr_code_url?: string;
 }
 
 /**
@@ -113,6 +117,18 @@ export async function sendMemorialRequestNotification(
 
       <h3>Uploaded Media</h3>
       <ul>${mediaList}</ul>
+
+      ${
+        data.public_url && data.qr_code_url
+          ? `
+      <h3>Universal QR Code & Link</h3>
+      <p><strong>Memorial Slug:</strong> ${data.public_url}</p>
+      <p><strong>Universal Link:</strong> https://fcpmemorials.com/go?m=${data.public_url}</p>
+      <p><strong>QR Code:</strong> <img src="${data.qr_code_url}" alt="Memorial QR Code" width="200" style="border: 1px solid #ddd; padding: 5px;" /></p>
+      <p><em>Scanning this QR code will open the memorial on any device, with automatic app detection.</em></p>
+      `
+          : ''
+      }
 
       <hr>
       <p><em>This is an automated notification from the memorial request system.</em></p>

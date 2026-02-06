@@ -5,6 +5,71 @@ import type { App } from '../index.js';
 
 export function registerMemorialRoutes(app: App, fastify: FastifyInstance) {
   /**
+   * GET /api/memorials/resolve/:slug
+   * Get a memorial by its public URL slug (used for universal QR code resolution)
+   * This endpoint works with the universal landing URL: /go?m={slug}
+   * Returns full memorial data or 404 if not found
+   */
+  fastify.get(
+    '/api/memorials/resolve/:slug',
+    {
+      schema: {
+        description: 'Get a memorial by its public URL slug for universal QR code resolution',
+        tags: ['memorials'],
+        params: {
+          type: 'object',
+          properties: { slug: { type: 'string' } },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              full_name: { type: 'string' },
+              birth_date: { type: 'string' },
+              death_date: { type: 'string' },
+              story_text: { type: 'string' },
+              photos: { type: 'array' },
+              video_link: { type: 'string' },
+              audio_narration_link: { type: 'string' },
+              latitude: { type: 'string' },
+              longitude: { type: 'string' },
+              location_visibility: { type: 'string' },
+              qr_code_url: { type: 'string' },
+              public_url: { type: 'string' },
+              created_at: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { slug } = request.params as { slug: string };
+      app.logger.info({ slug }, 'Resolving memorial by slug');
+
+      try {
+        const memorial = await app.db.query.memorials.findFirst({
+          where: and(
+            eq(schema.memorials.public_url, slug),
+            eq(schema.memorials.published_status, true)
+          ),
+        });
+
+        if (!memorial) {
+          app.logger.warn({ slug }, 'Memorial not found by slug or not published');
+          return reply.status(404).send({ error: 'Memorial not found' });
+        }
+
+        app.logger.info({ memorialId: memorial.id, slug }, 'Memorial resolved by slug successfully');
+        return memorial;
+      } catch (error) {
+        app.logger.error({ err: error, slug }, 'Failed to resolve memorial by slug');
+        throw error;
+      }
+    }
+  );
+
+  /**
    * GET /api/memorials/:id
    * Get a single memorial by ID
    */

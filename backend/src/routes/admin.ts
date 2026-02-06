@@ -55,11 +55,13 @@ async function generatePublicUrl(
 }
 
 /**
- * Generate QR code URL
+ * Generate universal QR code URL
+ * Uses the format: https://fcpmemorials.com/go?m={memorial_slug}
+ * This is a universal landing URL that works internationally and detects app installation
  */
-function generateQRCodeUrl(publicUrl: string, baseUrl: string = 'https://memorials.fcpus.com'): string {
-  const memorialUrl = `${baseUrl}/memorial/${publicUrl}`;
-  return `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(memorialUrl)}`;
+function generateQRCodeUrl(publicUrl: string, baseUrl: string = 'https://fcpmemorials.com'): string {
+  const universalUrl = `${baseUrl}/go?m=${publicUrl}`;
+  return `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(universalUrl)}`;
 }
 
 export function registerAdminRoutes(app: App, fastify: FastifyInstance) {
