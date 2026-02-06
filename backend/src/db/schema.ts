@@ -45,7 +45,9 @@ export const memorial_requests = pgTable('memorial_requests', {
   location_info: text('location_info'),
   latitude: decimal('latitude', { precision: 10, scale: 8 }),
   longitude: decimal('longitude', { precision: 11, scale: 8 }),
-  tier_selected: text('tier_selected').notNull(), // 'basic', 'standard', 'premium'
+  tier_selected: text('tier_selected').notNull(), // 'tier_1_marked', 'tier_2_remembered', 'tier_3_enduring'
+  preservation_addon: boolean('preservation_addon').default(false).notNull(),
+  preservation_billing_cycle: text('preservation_billing_cycle'), // 'monthly' or 'yearly'
   discount_requested: boolean('discount_requested').default(false).notNull(),
   discount_type: text('discount_type'), // 'military', 'first_responder'
   documentation_upload: text('documentation_upload'),

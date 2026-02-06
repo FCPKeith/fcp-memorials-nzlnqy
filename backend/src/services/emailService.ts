@@ -14,10 +14,25 @@ interface MemorialRequestEmailData {
   latitude: string | number | null;
   longitude: string | number | null;
   tier_selected: string;
+  preservation_addon: boolean;
+  preservation_billing_cycle: string | null;
   discount_requested: boolean;
   discount_type: string | null;
+  payment_amount: number;
   created_at: Date;
   country: string | null;
+}
+
+/**
+ * Map tier codes to display names
+ */
+function getTierDisplayName(tierCode: string): string {
+  const tierNames: Record<string, string> = {
+    tier_1_marked: 'Tier I — Marked (Foundational Memorial)',
+    tier_2_remembered: 'Tier II — Remembered (Narrated Story Memorial)',
+    tier_3_enduring: 'Tier III — Enduring (Full Legacy Memorial)',
+  };
+  return tierNames[tierCode] || tierCode;
 }
 
 /**
@@ -58,6 +73,10 @@ export async function sendMemorialRequestNotification(
     const formattedDate = new Date(data.created_at).toISOString();
     const location = formatLocation(data.latitude, data.longitude, data.location_info);
     const mediaList = formatMediaUploads(data.media_uploads);
+    const tierName = getTierDisplayName(data.tier_selected);
+
+    // Format payment amount from cents to dollars
+    const paymentAmountDollars = (data.payment_amount / 100).toFixed(2);
 
     const emailBody = `
       <h2>New Memorial Request Submission</h2>
@@ -80,8 +99,14 @@ export async function sendMemorialRequestNotification(
       ${data.country ? `<p><strong>Country:</strong> ${data.country}</p>` : ''}
 
       <h3>Service Information</h3>
-      <p><strong>Service Tier:</strong> ${data.tier_selected}</p>
+      <p><strong>Service Tier:</strong> ${tierName}</p>
+      <p><strong>Preservation & Hosting Add-On:</strong> ${
+        data.preservation_addon
+          ? `Yes (${data.preservation_billing_cycle === 'monthly' ? 'Monthly ($2/month)' : 'Yearly ($12/year)'})`
+          : 'No'
+      }</p>
       <p><strong>Discount Requested:</strong> ${data.discount_requested ? `Yes (${data.discount_type || 'General'})` : 'No'}</p>
+      <p><strong>Total Payment Amount:</strong> $${paymentAmountDollars}</p>
 
       <h3>Story / Written Tribute</h3>
       <p>${data.story_notes.replace(/\n/g, '<br>')}</p>

@@ -4,12 +4,16 @@ import * as schema from '../db/schema.js';
 import type { App } from '../index.js';
 import { sendMemorialRequestNotification } from '../services/emailService.js';
 
-// Tier pricing
+// Tier pricing (in cents for consistency with Stripe)
 const TIER_PRICES: Record<string, number> = {
-  basic: 299,
-  standard: 499,
-  premium: 799,
+  tier_1_marked: 7500,      // $75
+  tier_2_remembered: 12500,  // $125
+  tier_3_enduring: 20000,    // $200
 };
+
+// Preservation add-on pricing (in cents)
+const PRESERVATION_MONTHLY = 200;   // $2/month
+const PRESERVATION_YEARLY = 1200;   // $12/year
 
 const DISCOUNT_PERCENTAGE = 0.15; // 15% discount
 
@@ -31,6 +35,8 @@ export function registerMemorialRequestRoutes(app: App, fastify: FastifyInstance
       latitude?: string;
       longitude?: string;
       tier_selected: string;
+      preservation_addon?: boolean;
+      preservation_billing_cycle?: string;
       discount_requested?: boolean;
       discount_type?: string;
       documentation_upload?: string;
@@ -62,7 +68,9 @@ export function registerMemorialRequestRoutes(app: App, fastify: FastifyInstance
             location_info: { type: 'string' },
             latitude: { type: 'string' },
             longitude: { type: 'string' },
-            tier_selected: { type: 'string', enum: ['basic', 'standard', 'premium'] },
+            tier_selected: { type: 'string', enum: ['tier_1_marked', 'tier_2_remembered', 'tier_3_enduring'] },
+            preservation_addon: { type: 'boolean' },
+            preservation_billing_cycle: { type: 'string', enum: ['monthly', 'yearly'] },
             discount_requested: { type: 'boolean' },
             discount_type: { type: 'string', enum: ['military', 'first_responder'] },
             documentation_upload: { type: 'string' },
@@ -95,6 +103,8 @@ export function registerMemorialRequestRoutes(app: App, fastify: FastifyInstance
         latitude,
         longitude,
         tier_selected,
+        preservation_addon = false,
+        preservation_billing_cycle,
         discount_requested = false,
         discount_type,
         documentation_upload,
@@ -111,6 +121,8 @@ export function registerMemorialRequestRoutes(app: App, fastify: FastifyInstance
         latitude?: string;
         longitude?: string;
         tier_selected: string;
+        preservation_addon?: boolean;
+        preservation_billing_cycle?: string;
         discount_requested?: boolean;
         discount_type?: string;
         documentation_upload?: string;
@@ -122,6 +134,8 @@ export function registerMemorialRequestRoutes(app: App, fastify: FastifyInstance
           requester_email,
           loved_one_name,
           tier_selected,
+          preservation_addon,
+          preservation_billing_cycle,
           discount_requested,
         },
         'Creating memorial request'
@@ -130,8 +144,17 @@ export function registerMemorialRequestRoutes(app: App, fastify: FastifyInstance
       try {
         // Calculate payment amount
         let payment_amount = TIER_PRICES[tier_selected] || 0;
+
+        // Add preservation add-on if selected
+        if (preservation_addon) {
+          const preservationCost =
+            preservation_billing_cycle === 'monthly' ? PRESERVATION_MONTHLY : PRESERVATION_YEARLY;
+          payment_amount += preservationCost;
+        }
+
+        // Apply 15% discount if requested
         if (discount_requested) {
-          payment_amount = payment_amount * (1 - DISCOUNT_PERCENTAGE);
+          payment_amount = Math.round(payment_amount * (1 - DISCOUNT_PERCENTAGE));
         }
 
         // Convert string dates to Date objects or keep as null
@@ -152,6 +175,8 @@ export function registerMemorialRequestRoutes(app: App, fastify: FastifyInstance
             latitude: latitude ? parseFloat(latitude) : null,
             longitude: longitude ? parseFloat(longitude) : null,
             tier_selected,
+            preservation_addon,
+            preservation_billing_cycle: preservation_addon ? preservation_billing_cycle || null : null,
             discount_requested,
             discount_type: discount_type || null,
             documentation_upload: documentation_upload || null,
@@ -184,8 +209,11 @@ export function registerMemorialRequestRoutes(app: App, fastify: FastifyInstance
             latitude: createdRequest.latitude ? createdRequest.latitude.toString() : null,
             longitude: createdRequest.longitude ? createdRequest.longitude.toString() : null,
             tier_selected: createdRequest.tier_selected,
+            preservation_addon: createdRequest.preservation_addon,
+            preservation_billing_cycle: createdRequest.preservation_billing_cycle,
             discount_requested: createdRequest.discount_requested,
             discount_type: createdRequest.discount_type,
+            payment_amount: parseFloat(createdRequest.payment_amount),
             created_at: createdRequest.created_at,
             country: createdRequest.country,
           },
