@@ -4,7 +4,7 @@ import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import Constants from "expo-constants";
 
-const API_URL = "https://zx9m4wtvay3c52kkt4rane79tkz3gpu2.app.specular.dev";
+const API_URL = "https://pwesm38m2s562pv8mecxsgwjqsk4267e.app.specular.dev";
 
 export const BEARER_TOKEN_KEY = "fcp-memorials_bearer_token";
 

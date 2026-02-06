@@ -29,6 +29,8 @@ interface MemorialRequest {
   payment_amount: number;
   request_status: string;
   created_at: string;
+  preservation_addon?: boolean;
+  preservation_billing_cycle?: 'monthly' | 'yearly';
 }
 
 export default function MemorialRequestsScreen() {
@@ -93,6 +95,19 @@ export default function MemorialRequestsScreen() {
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
+  const formatTierName = (tier: string): string => {
+    const tierMap: Record<string, string> = {
+      tier_1_marked: 'Tier I — Marked ($75)',
+      tier_2_remembered: 'Tier II — Remembered ($125)',
+      tier_3_enduring: 'Tier III — Enduring ($200)',
+      // Legacy tier names (for backwards compatibility)
+      basic: 'Basic ($299)',
+      standard: 'Standard ($499)',
+      premium: 'Premium ($799)',
+    };
+    return tierMap[tier] || tier;
+  };
+
   const getStatusColor = (status: string): string => {
     switch (status) {
       case 'submitted':
@@ -149,7 +164,12 @@ export default function MemorialRequestsScreen() {
             <Text style={styles.requestDetail}>
               Dates: {formatDate(request.birth_date)} - {formatDate(request.death_date)}
             </Text>
-            <Text style={styles.requestDetail}>Tier: {request.tier_selected}</Text>
+            <Text style={styles.requestDetail}>Tier: {formatTierName(request.tier_selected)}</Text>
+            {request.preservation_addon && (
+              <Text style={styles.requestDetail}>
+                Preservation Add-on: {request.preservation_billing_cycle === 'monthly' ? '$2/month' : '$12/year'}
+              </Text>
+            )}
             <Text style={styles.requestDetail}>
               Payment: ${request.payment_amount} ({request.payment_status})
             </Text>

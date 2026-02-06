@@ -23,16 +23,23 @@ interface RequestFormData {
   death_date: string;
   story_notes: string;
   location_info: string;
-  tier_selected: 'basic' | 'standard' | 'premium';
+  tier_selected: 'tier_1_marked' | 'tier_2_remembered' | 'tier_3_enduring';
   discount_requested: boolean;
   discount_type?: 'military' | 'first_responder';
   country?: string;
+  preservation_addon: boolean;
+  preservation_billing_cycle?: 'monthly' | 'yearly';
 }
 
 const TIER_PRICES = {
-  basic: 299,
-  standard: 499,
-  premium: 799,
+  tier_1_marked: 75,
+  tier_2_remembered: 125,
+  tier_3_enduring: 200,
+};
+
+const PRESERVATION_PRICES = {
+  monthly: 2,
+  yearly: 12,
 };
 
 export default function RequestMemorialScreen() {
@@ -45,9 +52,10 @@ export default function RequestMemorialScreen() {
     death_date: '',
     story_notes: '',
     location_info: '',
-    tier_selected: 'standard',
+    tier_selected: 'tier_2_remembered',
     discount_requested: false,
     country: '',
+    preservation_addon: false,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,11 +64,19 @@ export default function RequestMemorialScreen() {
   const [requestId, setRequestId] = useState<string | null>(null);
 
   const calculatePrice = (): number => {
-    const basePrice = TIER_PRICES[formData.tier_selected];
-    if (formData.discount_requested) {
-      return basePrice * 0.85; // 15% discount
+    let total = TIER_PRICES[formData.tier_selected];
+    
+    // Add preservation add-on if selected
+    if (formData.preservation_addon && formData.preservation_billing_cycle) {
+      total += PRESERVATION_PRICES[formData.preservation_billing_cycle];
     }
-    return basePrice;
+    
+    // Apply discount if requested
+    if (formData.discount_requested) {
+      total = total * 0.85; // 15% discount
+    }
+    
+    return total;
   };
 
   const handleSubmit = async () => {
@@ -109,8 +125,16 @@ export default function RequestMemorialScreen() {
       <ScrollView style={commonStyles.container} contentContainerStyle={styles.content}>
         <Text style={styles.header}>Request a Memorial</Text>
         <Text style={styles.description}>
-          Create a lasting tribute for your loved one. All memorials are professionally curated by FCP.
+          Create a lasting tribute for your loved one. All memorials are professionally curated by FCP Memorials with dignity and care.
         </Text>
+        <View style={styles.infoBox}>
+          <Text style={styles.infoText}>
+            ✓ Viewing memorials is always free{'\n'}
+            ✓ Payment required only for memorial creation{'\n'}
+            ✓ Submission reviewed before payment{'\n'}
+            ✓ No aggressive upsells or pressure
+          </Text>
+        </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Your Information</Text>
@@ -198,32 +222,116 @@ export default function RequestMemorialScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Service Tier</Text>
+          <Text style={styles.sectionSubtitle}>
+            Choose the memorial service that honors their story
+          </Text>
           
           <TouchableOpacity
-            style={[styles.tierCard, formData.tier_selected === 'basic' && styles.tierCardSelected]}
-            onPress={() => setFormData({ ...formData, tier_selected: 'basic' })}
+            style={[styles.tierCard, formData.tier_selected === 'tier_1_marked' && styles.tierCardSelected]}
+            onPress={() => setFormData({ ...formData, tier_selected: 'tier_1_marked' })}
           >
-            <Text style={styles.tierName}>Basic - $299</Text>
-            <Text style={styles.tierDescription}>Written story + 3 photos + QR code</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.tierCard, formData.tier_selected === 'standard' && styles.tierCardSelected]}
-            onPress={() => setFormData({ ...formData, tier_selected: 'standard' })}
-          >
-            <Text style={styles.tierName}>Standard - $499</Text>
-            <Text style={styles.tierDescription}>Written story + 10 photos + video + QR code</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.tierCard, formData.tier_selected === 'premium' && styles.tierCardSelected]}
-            onPress={() => setFormData({ ...formData, tier_selected: 'premium' })}
-          >
-            <Text style={styles.tierName}>Premium - $799</Text>
+            <View style={styles.tierHeader}>
+              <Text style={styles.tierIcon}>🕯️</Text>
+              <View style={styles.tierTitleContainer}>
+                <Text style={styles.tierName}>Tier I — Marked</Text>
+                <Text style={styles.tierPrice}>$75 one-time</Text>
+              </View>
+            </View>
+            <Text style={styles.tierSubtitle}>Foundational Memorial</Text>
             <Text style={styles.tierDescription}>
-              Written story + unlimited photos + video + audio narration + QR code
+              • GPS grave pin on the map{'\n'}
+              • Name, dates, and location{'\n'}
+              • Short written remembrance{'\n'}
+              • Upload up to 5 photos
             </Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.tierCard, formData.tier_selected === 'tier_2_remembered' && styles.tierCardSelected]}
+            onPress={() => setFormData({ ...formData, tier_selected: 'tier_2_remembered' })}
+          >
+            <View style={styles.tierHeader}>
+              <Text style={styles.tierIcon}>🎙️</Text>
+              <View style={styles.tierTitleContainer}>
+                <Text style={styles.tierName}>Tier II — Remembered</Text>
+                <Text style={styles.tierPrice}>$125 one-time</Text>
+              </View>
+            </View>
+            <Text style={styles.tierSubtitle}>Narrated Story Memorial</Text>
+            <Text style={styles.tierDescription}>
+              Everything in Tier I, plus:{'\n'}
+              • Extended written story{'\n'}
+              • Narrated audio memorial (voice by FCP){'\n'}
+              • Upload up to 10 photos{'\n'}
+              • Upload 1 short video clip
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.tierCard, formData.tier_selected === 'tier_3_enduring' && styles.tierCardSelected]}
+            onPress={() => setFormData({ ...formData, tier_selected: 'tier_3_enduring' })}
+          >
+            <View style={styles.tierHeader}>
+              <Text style={styles.tierIcon}>🪦</Text>
+              <View style={styles.tierTitleContainer}>
+                <Text style={styles.tierName}>Tier III — Enduring</Text>
+                <Text style={styles.tierPrice}>$200 one-time</Text>
+              </View>
+            </View>
+            <Text style={styles.tierSubtitle}>Full Legacy Memorial</Text>
+            <Text style={styles.tierDescription}>
+              Everything in Tier II, plus:{'\n'}
+              • Expanded life story{'\n'}
+              • Multiple narration segments{'\n'}
+              • Upload up to 20 photos{'\n'}
+              • Upload multiple video clips{'\n'}
+              • Priority review{'\n'}
+              • Ongoing edits included
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Optional Add-On</Text>
+          
+          <TouchableOpacity
+            style={styles.checkboxRow}
+            onPress={() => setFormData({ 
+              ...formData, 
+              preservation_addon: !formData.preservation_addon,
+              preservation_billing_cycle: !formData.preservation_addon ? 'yearly' : undefined
+            })}
+          >
+            <View style={[styles.checkbox, formData.preservation_addon && styles.checkboxChecked]}>
+              {formData.preservation_addon && <Text style={styles.checkmark}>✓</Text>}
+            </View>
+            <View style={styles.addonTextContainer}>
+              <Text style={styles.checkboxLabel}>🌍 Preservation & Hosting</Text>
+              <Text style={styles.addonDescription}>
+                Long-term hosting, ability to update text and media, continued public access
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          {formData.preservation_addon && (
+            <View style={styles.billingOptions}>
+              <TouchableOpacity
+                style={[styles.billingButton, formData.preservation_billing_cycle === 'monthly' && styles.billingButtonSelected]}
+                onPress={() => setFormData({ ...formData, preservation_billing_cycle: 'monthly' })}
+              >
+                <Text style={styles.billingButtonTitle}>Monthly</Text>
+                <Text style={styles.billingButtonPrice}>$2/month</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.billingButton, formData.preservation_billing_cycle === 'yearly' && styles.billingButtonSelected]}
+                onPress={() => setFormData({ ...formData, preservation_billing_cycle: 'yearly' })}
+              >
+                <Text style={styles.billingButtonTitle}>Yearly</Text>
+                <Text style={styles.billingButtonPrice}>$12/year</Text>
+                <Text style={styles.billingButtonSavings}>Save $12</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -275,7 +383,8 @@ export default function RequestMemorialScreen() {
         </TouchableOpacity>
 
         <Text style={styles.note}>
-          * Required fields. After submission, you'll receive payment instructions via email.
+          * Required fields. Your request will be reviewed before payment is required.{'\n'}
+          Viewing memorials is always free — payment is only for creating a memorial.
         </Text>
       </ScrollView>
 
@@ -330,8 +439,21 @@ const styles = StyleSheet.create({
   description: {
     fontSize: 16,
     color: colors.textSecondary,
-    marginBottom: 24,
+    marginBottom: 16,
     lineHeight: 24,
+  },
+  infoBox: {
+    backgroundColor: colors.card,
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 24,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.primary,
+  },
+  infoText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 22,
   },
   section: {
     marginBottom: 24,
@@ -341,6 +463,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
     marginBottom: 16,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: 16,
+    marginTop: -8,
   },
   label: {
     fontSize: 14,
@@ -368,21 +496,46 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
+    marginBottom: 16,
   },
   tierCardSelected: {
     borderColor: colors.primary,
     backgroundColor: colors.highlight,
   },
+  tierHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  tierIcon: {
+    fontSize: 32,
+    marginRight: 12,
+  },
+  tierTitleContainer: {
+    flex: 1,
+  },
   tierName: {
     fontSize: 18,
     fontWeight: '600',
     color: colors.text,
-    marginBottom: 4,
+    marginBottom: 2,
+  },
+  tierPrice: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  tierSubtitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.textSecondary,
+    marginBottom: 8,
+    fontStyle: 'italic',
   },
   tierDescription: {
     fontSize: 14,
     color: colors.textSecondary,
+    lineHeight: 20,
   },
   checkboxRow: {
     flexDirection: 'row',
@@ -412,6 +565,50 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.text,
     flex: 1,
+  },
+  addonTextContainer: {
+    flex: 1,
+  },
+  addonDescription: {
+    fontSize: 12,
+    color: colors.textTertiary,
+    marginTop: 4,
+    lineHeight: 16,
+  },
+  billingOptions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+  },
+  billingButton: {
+    flex: 1,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: colors.card,
+    borderWidth: 2,
+    borderColor: colors.border,
+    alignItems: 'center',
+  },
+  billingButtonSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.highlight,
+  },
+  billingButtonTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  billingButtonPrice: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  billingButtonSavings: {
+    fontSize: 12,
+    color: colors.primary,
+    marginTop: 4,
+    fontWeight: '500',
   },
   discountOptions: {
     flexDirection: 'row',
