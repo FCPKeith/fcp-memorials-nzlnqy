@@ -6,6 +6,7 @@ import { registerMemorialRequestRoutes } from './routes/memorial-requests.js';
 import { registerUploadRoutes } from './routes/upload.js';
 import { registerAdminRoutes } from './routes/admin.js';
 import { registerOAuthDebugRoutes } from './routes/oauth-debug.js';
+import { registerHealthRoutes } from './routes/health.js';
 
 // Combine schemas for full database type support
 const schema = { ...appSchema, ...authSchema };
@@ -33,6 +34,7 @@ app.withAuth({
 
 // Register route modules
 // IMPORTANT: Always use registration functions to avoid circular dependency issues
+registerHealthRoutes(app, app.fastify);
 registerMemorialRoutes(app, app.fastify);
 registerMemorialRequestRoutes(app, app.fastify);
 registerUploadRoutes(app, app.fastify);
