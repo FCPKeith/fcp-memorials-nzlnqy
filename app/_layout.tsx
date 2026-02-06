@@ -65,6 +65,7 @@ export default function RootLayout() {
             <Stack.Screen name="auth" />
             <Stack.Screen name="auth-popup" />
             <Stack.Screen name="auth-callback" />
+            <Stack.Screen name="go" />
             <Stack.Screen name="+not-found" />
           </Stack>
           <StatusBar style="light" />

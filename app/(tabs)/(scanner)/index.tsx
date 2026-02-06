@@ -42,17 +42,29 @@ export default function ScannerScreen() {
   };
 
   const extractMemorialId = (data: string): string | null => {
-    // Try to extract memorial ID from URL
+    console.log('[Scanner] Extracting memorial ID from:', data);
+    
+    // Try to extract from universal URL format: https://fcpmemorials.com/go?m=john-doe-1928
+    const universalMatch = data.match(/\/go\?m=([a-zA-Z0-9-]+)/);
+    if (universalMatch) {
+      console.log('[Scanner] Found universal URL format:', universalMatch[1]);
+      return universalMatch[1];
+    }
+    
+    // Try to extract memorial ID from direct URL: /memorial/john-doe-1928
     const urlMatch = data.match(/memorial\/([a-zA-Z0-9-]+)/);
     if (urlMatch) {
+      console.log('[Scanner] Found direct memorial URL:', urlMatch[1]);
       return urlMatch[1];
     }
     
     // Check if it's a direct memorial ID (alphanumeric with hyphens)
     if (/^[a-zA-Z0-9-]+$/.test(data)) {
+      console.log('[Scanner] Found direct memorial ID:', data);
       return data;
     }
     
+    console.log('[Scanner] No valid memorial ID found');
     return null;
   };
 

@@ -42,13 +42,40 @@
         }
       ]
     ],
-    "scheme": "FCP Memorials",
+    "scheme": "fcpmemorials",
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
-      "router": {},
+      "router": {
+        "origin": "https://fcpmemorials.com"
+      },
       "backendUrl": "https://pwesm38m2s562pv8mecxsgwjqsk4267e.app.specular.dev"
-    }
+    },
+    "intentFilters": [
+      {
+        "action": "VIEW",
+        "autoVerify": true,
+        "data": [
+          {
+            "scheme": "https",
+            "host": "fcpmemorials.com",
+            "pathPrefix": "/go"
+          },
+          {
+            "scheme": "https",
+            "host": "fcpmemorials.com",
+            "pathPrefix": "/memorial"
+          }
+        ],
+        "category": [
+          "BROWSABLE",
+          "DEFAULT"
+        ]
+      }
+    ],
+    "associatedDomains": [
+      "applinks:fcpmemorials.com"
+    ]
   }
 }

@@ -218,12 +218,27 @@ export default function MemorialDetailScreen() {
           {memorial.qr_code_url && (
             <>
               <View style={commonStyles.divider} />
-              <Text style={styles.qrTitle}>Memorial QR Code</Text>
+              <Text style={styles.qrTitle}>Universal QR Code</Text>
+              <Text style={styles.qrDescription}>
+                Scan this QR code to share this memorial. Works on any device, anywhere in the world.
+              </Text>
               <Image
                 source={resolveImageSource(memorial.qr_code_url)}
                 style={styles.qrCode}
                 resizeMode="contain"
               />
+              <View style={styles.qrInfoBox}>
+                <Text style={styles.qrInfoLabel}>Universal Link:</Text>
+                <Text style={styles.qrInfoValue}>
+                  https://fcpmemorials.com/go?m={memorial.public_url}
+                </Text>
+                <Text style={styles.qrInfoNote}>
+                  ✓ Auto-detects if app is installed
+                </Text>
+                <Text style={styles.qrInfoNote}>
+                  ✓ Falls back to web version
+                </Text>
+              </View>
             </>
           )}
         </View>
@@ -293,12 +308,44 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
     color: colors.text,
-    marginBottom: 16,
+    marginBottom: 8,
     textAlign: 'center',
+  },
+  qrDescription: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 16,
+    lineHeight: 20,
   },
   qrCode: {
     width: 200,
     height: 200,
     alignSelf: 'center',
+    marginBottom: 16,
+  },
+  qrInfoBox: {
+    backgroundColor: colors.card,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  qrInfoLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
+  qrInfoValue: {
+    fontSize: 13,
+    color: colors.text,
+    fontFamily: 'SpaceMono',
+    marginBottom: 12,
+  },
+  qrInfoNote: {
+    fontSize: 12,
+    color: colors.accent,
+    marginTop: 4,
   },
 });

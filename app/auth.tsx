@@ -6,13 +6,13 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   Platform,
   KeyboardAvoidingView,
   ScrollView,
 } from "react-native";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "expo-router";
+import { Modal } from "@/components/ui/Modal";
 
 type Mode = "signin" | "signup";
 
@@ -26,6 +26,10 @@ export default function AuthScreen() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   if (authLoading) {
     return (
@@ -37,7 +41,8 @@ export default function AuthScreen() {
 
   const handleEmailAuth = async () => {
     if (!email || !password) {
-      Alert.alert("Error", "Please enter email and password");
+      setErrorMessage("Please enter email and password");
+      setShowErrorModal(true);
       return;
     }
 
@@ -45,17 +50,16 @@ export default function AuthScreen() {
     try {
       if (mode === "signin") {
         await signInWithEmail(email, password);
-        router.replace("/admin");
+        router.replace("/(admin)");
       } else {
         await signUpWithEmail(email, password, name);
-        Alert.alert(
-          "Success",
-          "Account created! Please check your email to verify your account."
-        );
-        router.replace("/admin");
+        setSuccessMessage("Account created! Please check your email to verify your account.");
+        setShowSuccessModal(true);
+        // Don't redirect immediately, let user see success message
       }
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Authentication failed");
+      setErrorMessage(error.message || "Authentication failed");
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
@@ -71,9 +75,10 @@ export default function AuthScreen() {
       } else if (provider === "github") {
         await signInWithGitHub();
       }
-      router.replace("/admin");
+      router.replace("/(admin)");
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Authentication failed");
+      setErrorMessage(error.message || "Authentication failed");
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
@@ -171,6 +176,40 @@ export default function AuthScreen() {
           )}
         </View>
       </ScrollView>
+
+      <Modal
+        visible={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        title="Error"
+        message={errorMessage}
+        buttons={[
+          {
+            text: "OK",
+            onPress: () => setShowErrorModal(false),
+            style: "primary",
+          },
+        ]}
+      />
+
+      <Modal
+        visible={showSuccessModal}
+        onClose={() => {
+          setShowSuccessModal(false);
+          router.replace("/(admin)");
+        }}
+        title="Success"
+        message={successMessage}
+        buttons={[
+          {
+            text: "Continue",
+            onPress: () => {
+              setShowSuccessModal(false);
+              router.replace("/(admin)");
+            },
+            style: "primary",
+          },
+        ]}
+      />
     </KeyboardAvoidingView>
   );
 }

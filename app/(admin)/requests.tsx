@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Image,
+  Share,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -41,6 +42,29 @@ function resolveImageSource(source: string | number | any): any {
   if (!source) return { uri: '' };
   if (typeof source === 'string') return { uri: source };
   return source;
+}
+
+// Generate universal QR code URL
+function generateUniversalQRCode(slug: string): string {
+  const universalUrl = `https://fcpmemorials.com/go?m=${slug}`;
+  return `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(universalUrl)}`;
+}
+
+// Generate memorial slug from name and birth year
+function generateMemorialSlug(name: string, birthDate?: string): string {
+  let slug = name
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+
+  if (birthDate) {
+    const year = new Date(birthDate).getFullYear();
+    slug = `${slug}-${year}`;
+  }
+
+  return slug;
 }
 
 export default function MemorialRequestsScreen() {
@@ -88,7 +112,7 @@ export default function MemorialRequestsScreen() {
     console.log('[AdminRequests] Updating request status:', requestId, newStatus);
 
     try {
-      await authenticatedPut(`/api/admin/memorial-requests/${requestId}/status`, {
+      await authenticatedPut(`/api/admin/memorial-requests/${requestId}`, {
         request_status: newStatus,
       });
       console.log('[AdminRequests] Status updated successfully');
@@ -98,6 +122,22 @@ export default function MemorialRequestsScreen() {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update status';
       setError(errorMessage);
       setShowErrorModal(true);
+    }
+  };
+
+  const handleShareQR = async (request: MemorialRequest) => {
+    const slug = generateMemorialSlug(request.loved_one_name, request.birth_date);
+    const universalUrl = `https://fcpmemorials.com/go?m=${slug}`;
+    
+    console.log('[AdminRequests] Sharing universal QR for:', slug);
+    
+    try {
+      await Share.share({
+        message: `Memorial for ${request.loved_one_name}\n\nUniversal Link: ${universalUrl}\n\nScan the QR code to view the memorial on any device.`,
+        url: universalUrl,
+      });
+    } catch (err) {
+      console.error('[AdminRequests] Error sharing:', err);
     }
   };
 
@@ -161,6 +201,9 @@ export default function MemorialRequestsScreen() {
             {requests.map((request) => {
               const isExpanded = expandedRequestId === request.id;
               const mediaCountText = mediaCount(request);
+              const memorialSlug = generateMemorialSlug(request.loved_one_name, request.birth_date);
+              const universalUrl = `https://fcpmemorials.com/go?m=${memorialSlug}`;
+              const qrCodeUrl = generateUniversalQRCode(memorialSlug);
               
               return (
                 <View key={request.id} style={styles.requestCard}>
@@ -287,6 +330,49 @@ export default function MemorialRequestsScreen() {
                           </Text>
                         </View>
                       )}
+
+                      {/* Universal QR Code Section */}
+                      <View style={styles.qrSection}>
+                        <View style={styles.qrHeader}>
+                          <Text style={styles.qrTitle}>Universal QR Code</Text>
+                          <TouchableOpacity
+                            style={styles.shareButton}
+                            onPress={() => handleShareQR(request)}
+                          >
+                            <IconSymbol
+                              ios_icon_name="square.and.arrow.up"
+                              android_material_icon_name="share"
+                              size={20}
+                              color={colors.primary}
+                            />
+                          </TouchableOpacity>
+                        </View>
+                        
+                        <View style={styles.qrContent}>
+                          <Image
+                            source={resolveImageSource(qrCodeUrl)}
+                            style={styles.qrImage}
+                            resizeMode="contain"
+                          />
+                          <View style={styles.qrInfo}>
+                            <Text style={styles.qrLabel}>Memorial Slug:</Text>
+                            <Text style={styles.qrValue}>{memorialSlug}</Text>
+                            
+                            <Text style={[styles.qrLabel, styles.qrLabelSpacing]}>Universal Link:</Text>
+                            <Text style={styles.qrValue}>{universalUrl}</Text>
+                            
+                            <Text style={styles.qrNote}>
+                              ✓ Works internationally on any device
+                            </Text>
+                            <Text style={styles.qrNote}>
+                              ✓ Auto-detects if app is installed
+                            </Text>
+                            <Text style={styles.qrNote}>
+                              ✓ Falls back to web version
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
 
                       <View style={styles.actionButtons}>
                         {request.request_status === 'submitted' && (
@@ -499,6 +585,59 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: colors.card,
+  },
+  qrSection: {
+    marginBottom: 16,
+    padding: 16,
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  qrHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  qrTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  shareButton: {
+    padding: 8,
+  },
+  qrContent: {
+    alignItems: 'center',
+  },
+  qrImage: {
+    width: 200,
+    height: 200,
+    marginBottom: 16,
+  },
+  qrInfo: {
+    width: '100%',
+  },
+  qrLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
+  qrLabelSpacing: {
+    marginTop: 12,
+  },
+  qrValue: {
+    fontSize: 13,
+    color: colors.text,
+    fontFamily: 'SpaceMono',
+    marginBottom: 8,
+  },
+  qrNote: {
+    fontSize: 12,
+    color: colors.accent,
+    marginTop: 4,
   },
   actionButtons: {
     flexDirection: 'row',
