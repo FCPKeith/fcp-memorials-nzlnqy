@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "FCP Memorials",
-    "slug": "fcp-memorials",
+    "slug": "FCP Memorials",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/sunrise tree.JPG",
@@ -78,7 +78,7 @@
         }
       ]
     ],
-    "scheme": "fcpmemorials",
+    "scheme": "FCP Memorials",
     "experiments": {
       "typedRoutes": true
     },
