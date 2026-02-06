@@ -20,7 +20,7 @@ interface ModalProps {
   buttons?: Array<{
     text: string;
     onPress: () => void;
-    style?: 'default' | 'primary' | 'danger';
+    style?: 'default' | 'primary' | 'danger' | 'cancel' | 'destructive';
   }>;
   style?: ViewStyle;
 }
@@ -64,6 +64,8 @@ export const Modal: React.FC<ModalProps> = ({
                       styles.button,
                       button.style === 'primary' && styles.buttonPrimary,
                       button.style === 'danger' && styles.buttonDanger,
+                      button.style === 'destructive' && styles.buttonDanger,
+                      button.style === 'cancel' && styles.buttonCancel,
                     ]}
                     onPress={button.onPress}
                   >
@@ -72,6 +74,8 @@ export const Modal: React.FC<ModalProps> = ({
                         styles.buttonText,
                         button.style === 'primary' && styles.buttonTextPrimary,
                         button.style === 'danger' && styles.buttonTextDanger,
+                        button.style === 'destructive' && styles.buttonTextDanger,
+                        button.style === 'cancel' && styles.buttonTextCancel,
                       ]}
                     >
                       {button.text}
@@ -137,6 +141,11 @@ const styles = StyleSheet.create({
   buttonDanger: {
     backgroundColor: colors.error,
   },
+  buttonCancel: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
   buttonText: {
     fontSize: 16,
     fontWeight: '600',
@@ -147,5 +156,8 @@ const styles = StyleSheet.create({
   },
   buttonTextDanger: {
     color: colors.text,
+  },
+  buttonTextCancel: {
+    color: colors.textSecondary,
   },
 });

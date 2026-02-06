@@ -1,4 +1,6 @@
 
+import React, { useEffect } from 'react';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useColorScheme } from 'react-native';
 import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
@@ -12,8 +14,6 @@ import {
 import * as SplashScreen from 'expo-splash-screen';
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import React, { useEffect } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { colors } from '@/styles/commonStyles';
 import { AuthProvider } from '@/contexts/AuthContext';
 
@@ -65,8 +65,13 @@ export default function RootLayout() {
     }
   }, [loaded]);
 
+  // Show loading screen while fonts are loading
   if (!loaded) {
-    return null;
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
   }
 
   return (

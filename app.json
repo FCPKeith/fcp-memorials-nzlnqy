@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "FCP Memorials",
-    "slug": "FCP Memorials",
+    "slug": "fcp-memorials",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/sunrise tree.JPG",
@@ -14,10 +14,14 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.Natively",
+      "bundleIdentifier": "com.fcpmemorials.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "associatedDomains": [
+        "applinks:fcpmemorials.com",
+        "applinks:pwesm38m2s562pv8mecxsgwjqsk4267e.app.specular.dev"
+      ]
     },
     "android": {
       "adaptiveIcon": {
@@ -25,7 +29,39 @@
         "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.Natively"
+      "package": "com.fcpmemorials.app",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "fcpmemorials.com",
+              "pathPrefix": "/go"
+            },
+            {
+              "scheme": "https",
+              "host": "fcpmemorials.com",
+              "pathPrefix": "/memorial"
+            },
+            {
+              "scheme": "https",
+              "host": "fcpmemorials.com",
+              "pathPrefix": "/auth"
+            },
+            {
+              "scheme": "https",
+              "host": "pwesm38m2s562pv8mecxsgwjqsk4267e.app.specular.dev",
+              "pathPrefix": "/api/auth"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/images/final_quest_240x240.png",
@@ -51,31 +87,6 @@
         "origin": "https://fcpmemorials.com"
       },
       "backendUrl": "https://pwesm38m2s562pv8mecxsgwjqsk4267e.app.specular.dev"
-    },
-    "intentFilters": [
-      {
-        "action": "VIEW",
-        "autoVerify": true,
-        "data": [
-          {
-            "scheme": "https",
-            "host": "fcpmemorials.com",
-            "pathPrefix": "/go"
-          },
-          {
-            "scheme": "https",
-            "host": "fcpmemorials.com",
-            "pathPrefix": "/memorial"
-          }
-        ],
-        "category": [
-          "BROWSABLE",
-          "DEFAULT"
-        ]
-      }
-    ],
-    "associatedDomains": [
-      "applinks:fcpmemorials.com"
-    ]
+    }
   }
 }

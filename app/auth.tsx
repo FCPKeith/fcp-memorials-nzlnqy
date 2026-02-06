@@ -14,6 +14,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "expo-router";
 import { Modal } from "@/components/ui/Modal";
+import { SplashScreen } from "@/components/SplashScreen";
 
 type Mode = "signin" | "signup";
 
@@ -35,19 +36,14 @@ export default function AuthScreen() {
   // If user is already logged in, redirect to admin
   useEffect(() => {
     if (!authLoading && user) {
-      console.log("AuthScreen: User already logged in, redirecting to admin");
+      console.log("[AuthScreen] User already logged in, redirecting to admin");
       router.replace("/(admin)");
     }
   }, [user, authLoading]);
 
-  // Show loading state while checking session
+  // Show splash screen while checking session
   if (authLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Loading...</Text>
-      </View>
-    );
+    return <SplashScreen />;
   }
 
   const handleEmailAuth = async () => {
@@ -59,18 +55,18 @@ export default function AuthScreen() {
 
     setLoading(true);
     try {
-      console.log("AuthScreen: Attempting email auth, mode:", mode);
+      console.log("[AuthScreen] Attempting email auth, mode:", mode);
       if (mode === "signin") {
         await signInWithEmail(email, password);
-        console.log("AuthScreen: Sign-in successful, navigation will be handled by AuthContext");
+        console.log("[AuthScreen] Sign-in successful, navigation will be handled by AuthContext");
       } else {
         await signUpWithEmail(email, password, name);
-        console.log("AuthScreen: Sign-up successful");
+        console.log("[AuthScreen] Sign-up successful");
         setSuccessMessage("Account created successfully!");
         setShowSuccessModal(true);
       }
     } catch (error: any) {
-      console.error("AuthScreen: Email auth failed:", error);
+      console.error("[AuthScreen] Email auth failed:", error);
       setErrorMessage(error.message || "Authentication failed");
       setShowErrorModal(true);
     } finally {
@@ -81,7 +77,7 @@ export default function AuthScreen() {
   const handleSocialAuth = async (provider: "google" | "apple" | "github") => {
     setLoading(true);
     try {
-      console.log("AuthScreen: Attempting social auth with", provider);
+      console.log("[AuthScreen] Attempting social auth with", provider);
       if (provider === "google") {
         await signInWithGoogle();
       } else if (provider === "apple") {
@@ -89,9 +85,9 @@ export default function AuthScreen() {
       } else if (provider === "github") {
         await signInWithGitHub();
       }
-      console.log("AuthScreen: Social auth successful, navigation will be handled by AuthContext");
+      console.log("[AuthScreen] Social auth successful, navigation will be handled by AuthContext");
     } catch (error: any) {
-      console.error("AuthScreen: Social auth failed:", error);
+      console.error("[AuthScreen] Social auth failed:", error);
       setErrorMessage(error.message || "Authentication failed");
       setShowErrorModal(true);
     } finally {
@@ -231,17 +227,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#1a1a1a",
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#1a1a1a",
-  },
-  loadingText: {
-    marginTop: 16,
-    color: "#fff",
-    fontSize: 16,
   },
   scrollContent: {
     flexGrow: 1,
