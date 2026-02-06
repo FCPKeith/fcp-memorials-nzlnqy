@@ -9,11 +9,15 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
+  Image,
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { colors, commonStyles } from '@/styles/commonStyles';
 import { apiPost } from '@/utils/api';
 import { Modal } from '@/components/ui/Modal';
+import * as ImagePicker from 'expo-image-picker';
+import { IconSymbol } from '@/components/IconSymbol';
+import { uploadFile } from '@/utils/upload';
 
 interface RequestFormData {
   requester_name: string;
@@ -29,6 +33,13 @@ interface RequestFormData {
   country?: string;
   preservation_addon: boolean;
   preservation_billing_cycle?: 'monthly' | 'yearly';
+  media_uploads: string[];
+}
+
+interface MediaFile {
+  uri: string;
+  type: 'photo' | 'video';
+  name: string;
 }
 
 const TIER_PRICES = {
@@ -41,6 +52,19 @@ const PRESERVATION_PRICES = {
   monthly: 2,
   yearly: 12,
 };
+
+const TIER_LIMITS = {
+  tier_1_marked: { photos: 5, videos: 0 },
+  tier_2_remembered: { photos: 10, videos: 1 },
+  tier_3_enduring: { photos: 20, videos: 999 }, // "multiple" = high limit
+};
+
+// Helper to resolve image sources
+function resolveImageSource(source: string | number | any): any {
+  if (!source) return { uri: '' };
+  if (typeof source === 'string') return { uri: source };
+  return source;
+}
 
 export default function RequestMemorialScreen() {
   const router = useRouter();
@@ -56,33 +80,115 @@ export default function RequestMemorialScreen() {
     discount_requested: false,
     country: '',
     preservation_addon: false,
+    media_uploads: [],
   });
+  const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
 
+  const tierLimits = TIER_LIMITS[formData.tier_selected];
+  const photoCount = mediaFiles.filter(f => f.type === 'photo').length;
+  const videoCount = mediaFiles.filter(f => f.type === 'video').length;
+
   const calculatePrice = (): number => {
     let total = TIER_PRICES[formData.tier_selected];
     
-    // Add preservation add-on if selected
     if (formData.preservation_addon && formData.preservation_billing_cycle) {
       total += PRESERVATION_PRICES[formData.preservation_billing_cycle];
     }
     
-    // Apply discount if requested
     if (formData.discount_requested) {
-      total = total * 0.85; // 15% discount
+      total = total * 0.85;
     }
     
     return total;
   };
 
+  const pickImages = async () => {
+    console.log('[RequestMemorial] User tapped Add Photos button');
+    
+    if (photoCount >= tierLimits.photos) {
+      setError(`Your selected tier allows up to ${tierLimits.photos} photos`);
+      setShowErrorModal(true);
+      return;
+    }
+
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (!permissionResult.granted) {
+      setError('Permission to access photos is required');
+      setShowErrorModal(true);
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: 'images',
+      allowsMultipleSelection: true,
+      quality: 0.8,
+      selectionLimit: tierLimits.photos - photoCount,
+    });
+
+    if (!result.canceled && result.assets) {
+      console.log('[RequestMemorial] Selected photos:', result.assets.length);
+      const newPhotos: MediaFile[] = result.assets.map(asset => ({
+        uri: asset.uri,
+        type: 'photo' as const,
+        name: asset.fileName || `photo-${Date.now()}.jpg`,
+      }));
+      setMediaFiles([...mediaFiles, ...newPhotos]);
+    }
+  };
+
+  const pickVideo = async () => {
+    console.log('[RequestMemorial] User tapped Add Video button');
+    
+    if (videoCount >= tierLimits.videos) {
+      setError(`Your selected tier allows up to ${tierLimits.videos} video${tierLimits.videos === 1 ? '' : 's'}`);
+      setShowErrorModal(true);
+      return;
+    }
+
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (!permissionResult.granted) {
+      setError('Permission to access videos is required');
+      setShowErrorModal(true);
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: 'videos',
+      allowsMultipleSelection: false,
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets && result.assets[0]) {
+      console.log('[RequestMemorial] Selected video:', result.assets[0].uri);
+      const newVideo: MediaFile = {
+        uri: result.assets[0].uri,
+        type: 'video',
+        name: result.assets[0].fileName || `video-${Date.now()}.mp4`,
+      };
+      setMediaFiles([...mediaFiles, newVideo]);
+    }
+  };
+
+  const removeMedia = (index: number) => {
+    console.log('[RequestMemorial] Removing media at index:', index);
+    const newMediaFiles = [...mediaFiles];
+    newMediaFiles.splice(index, 1);
+    setMediaFiles(newMediaFiles);
+  };
+
   const handleSubmit = async () => {
     console.log('[RequestMemorial] Submitting request with data:', {
       ...formData,
-      story_notes: formData.story_notes.substring(0, 50) + '...' // Truncate for logging
+      story_notes: formData.story_notes.substring(0, 50) + '...',
+      mediaCount: mediaFiles.length,
     });
 
     // Validation
@@ -96,7 +202,37 @@ export default function RequestMemorialScreen() {
     setError(null);
 
     try {
-      const response = await apiPost<{ id: string; payment_amount: number }>('/api/memorial-requests', formData);
+      // Upload media files first
+      let uploadedUrls: string[] = [];
+      
+      if (mediaFiles.length > 0) {
+        console.log('[RequestMemorial] Uploading media files:', mediaFiles.length);
+        setUploadingMedia(true);
+        
+        try {
+          const uploadPromises = mediaFiles.map(async (file) => {
+            console.log('[RequestMemorial] Uploading file:', file.name);
+            const result = await uploadFile(file.uri, 'file');
+            return result.url;
+          });
+          
+          uploadedUrls = await Promise.all(uploadPromises);
+          console.log('[RequestMemorial] All media uploaded successfully:', uploadedUrls.length);
+        } catch (uploadError) {
+          console.error('[RequestMemorial] Media upload failed:', uploadError);
+          throw new Error('Failed to upload media files. Please try again.');
+        } finally {
+          setUploadingMedia(false);
+        }
+      }
+
+      // Submit the request with uploaded media URLs
+      const submissionData = {
+        ...formData,
+        media_uploads: uploadedUrls,
+      };
+
+      const response = await apiPost<{ id: string; payment_amount: number }>('/api/memorial-requests', submissionData);
       console.log('[RequestMemorial] Request submitted successfully. Email notification will be sent to floatincoffin@icloud.com');
       console.log('[RequestMemorial] Response:', response);
       setRequestId(response.id);
@@ -110,6 +246,11 @@ export default function RequestMemorialScreen() {
       setLoading(false);
     }
   };
+
+  const photoLimitText = `${photoCount}/${tierLimits.photos} photos`;
+  const videoLimitText = tierLimits.videos === 0 ? 'No videos' : `${videoCount}/${tierLimits.videos} video${tierLimits.videos === 1 ? '' : 's'}`;
+  const canAddPhotos = photoCount < tierLimits.photos;
+  const canAddVideos = videoCount < tierLimits.videos;
 
   return (
     <>
@@ -163,7 +304,7 @@ export default function RequestMemorialScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Memorial Information</Text>
           
-          <Text style={styles.label}>Loved One's Name *</Text>
+          <Text style={styles.label}>Loved One&apos;s Name *</Text>
           <TextInput
             style={styles.input}
             value={formData.loved_one_name}
@@ -292,6 +433,96 @@ export default function RequestMemorialScreen() {
         </View>
 
         <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Media Uploads</Text>
+          <Text style={styles.sectionSubtitle}>
+            {photoLimitText} • {videoLimitText}
+          </Text>
+
+          <View style={styles.mediaButtonsRow}>
+            <TouchableOpacity
+              style={[styles.mediaButton, !canAddPhotos && styles.mediaButtonDisabled]}
+              onPress={pickImages}
+              disabled={!canAddPhotos}
+            >
+              <IconSymbol
+                ios_icon_name="photo"
+                android_material_icon_name="photo"
+                size={24}
+                color={canAddPhotos ? colors.primary : colors.textTertiary}
+              />
+              <Text style={[styles.mediaButtonText, !canAddPhotos && styles.mediaButtonTextDisabled]}>
+                Add Photos
+              </Text>
+            </TouchableOpacity>
+
+            {tierLimits.videos > 0 && (
+              <TouchableOpacity
+                style={[styles.mediaButton, !canAddVideos && styles.mediaButtonDisabled]}
+                onPress={pickVideo}
+                disabled={!canAddVideos}
+              >
+                <IconSymbol
+                  ios_icon_name="video"
+                  android_material_icon_name="videocam"
+                  size={24}
+                  color={canAddVideos ? colors.primary : colors.textTertiary}
+                />
+                <Text style={[styles.mediaButtonText, !canAddVideos && styles.mediaButtonTextDisabled]}>
+                  Add Video
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {mediaFiles.length > 0 && (
+            <View style={styles.mediaGrid}>
+              {mediaFiles.map((file, index) => (
+                <View key={index} style={styles.mediaItem}>
+                  {file.type === 'photo' ? (
+                    <Image source={resolveImageSource(file.uri)} style={styles.mediaThumbnail} />
+                  ) : (
+                    <View style={[styles.mediaThumbnail, styles.videoPlaceholder]}>
+                      <IconSymbol
+                        ios_icon_name="play.circle.fill"
+                        android_material_icon_name="play-circle-filled"
+                        size={40}
+                        color={colors.text}
+                      />
+                    </View>
+                  )}
+                  <TouchableOpacity
+                    style={styles.removeButton}
+                    onPress={() => removeMedia(index)}
+                  >
+                    <IconSymbol
+                      ios_icon_name="xmark.circle.fill"
+                      android_material_icon_name="cancel"
+                      size={24}
+                      color={colors.error}
+                    />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {mediaFiles.length === 0 && (
+            <View style={styles.emptyMediaState}>
+              <IconSymbol
+                ios_icon_name="photo.on.rectangle"
+                android_material_icon_name="photo-library"
+                size={48}
+                color={colors.textTertiary}
+              />
+              <Text style={styles.emptyMediaText}>No media uploaded yet</Text>
+              <Text style={styles.emptyMediaSubtext}>
+                Photos and videos help tell their story
+              </Text>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>Optional Add-On</Text>
           
           <TouchableOpacity
@@ -371,12 +602,17 @@ export default function RequestMemorialScreen() {
         </View>
 
         <TouchableOpacity
-          style={[commonStyles.button, loading && styles.buttonDisabled]}
+          style={[commonStyles.button, (loading || uploadingMedia) && styles.buttonDisabled]}
           onPress={handleSubmit}
-          disabled={loading}
+          disabled={loading || uploadingMedia}
         >
-          {loading ? (
-            <ActivityIndicator color={colors.text} />
+          {loading || uploadingMedia ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator color={colors.text} />
+              <Text style={styles.loadingText}>
+                {uploadingMedia ? 'Uploading media...' : 'Submitting...'}
+              </Text>
+            </View>
           ) : (
             <Text style={commonStyles.buttonText}>Submit Request</Text>
           )}
@@ -537,6 +773,84 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: 20,
   },
+  mediaButtonsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  mediaButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.card,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    borderRadius: 8,
+    padding: 12,
+    gap: 8,
+  },
+  mediaButtonDisabled: {
+    borderColor: colors.border,
+    opacity: 0.5,
+  },
+  mediaButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  mediaButtonTextDisabled: {
+    color: colors.textTertiary,
+  },
+  mediaGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  mediaItem: {
+    width: 100,
+    height: 100,
+    position: 'relative',
+  },
+  mediaThumbnail: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 8,
+    backgroundColor: colors.card,
+  },
+  videoPlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+  },
+  removeButton: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: colors.background,
+    borderRadius: 12,
+  },
+  emptyMediaState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+    backgroundColor: colors.card,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+  },
+  emptyMediaText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.textSecondary,
+    marginTop: 12,
+  },
+  emptyMediaSubtext: {
+    fontSize: 14,
+    color: colors.textTertiary,
+    marginTop: 4,
+  },
   checkboxRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -657,6 +971,16 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.5,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
   },
   note: {
     fontSize: 12,
