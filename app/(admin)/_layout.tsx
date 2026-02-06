@@ -24,12 +24,6 @@ export default function AdminLayout() {
           title: 'Memorial Requests',
         }}
       />
-      <Stack.Screen
-        name="create-memorial"
-        options={{
-          title: 'Create Memorial',
-        }}
-      />
     </Stack>
   );
 }

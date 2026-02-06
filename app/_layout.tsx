@@ -13,6 +13,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import React, { useEffect } from 'react';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { colors } from '@/styles/commonStyles';
 import { AuthProvider } from '@/contexts/AuthContext';
 
@@ -32,6 +33,26 @@ const FCPDarkTheme = {
   },
 };
 
+function RootLayoutNav() {
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="memorial/[id]" />
+      <Stack.Screen name="request-memorial" />
+      <Stack.Screen name="(admin)" />
+      <Stack.Screen name="auth" />
+      <Stack.Screen name="auth-popup" />
+      <Stack.Screen name="auth-callback" />
+      <Stack.Screen name="go" />
+      <Stack.Screen name="+not-found" />
+    </Stack>
+  );
+}
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [loaded] = useFonts({
@@ -50,27 +71,22 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AuthProvider>
-        <ThemeProvider value={FCPDarkTheme}>
-          <SystemBars style="light" />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-            }}
-          >
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="memorial/[id]" />
-            <Stack.Screen name="request-memorial" />
-            <Stack.Screen name="(admin)" />
-            <Stack.Screen name="auth" />
-            <Stack.Screen name="auth-popup" />
-            <Stack.Screen name="auth-callback" />
-            <Stack.Screen name="go" />
-            <Stack.Screen name="+not-found" />
-          </Stack>
-          <StatusBar style="light" />
-        </ThemeProvider>
-      </AuthProvider>
+      <ThemeProvider value={FCPDarkTheme}>
+        <SystemBars style="light" />
+        <AuthProvider>
+          <RootLayoutNav />
+        </AuthProvider>
+        <StatusBar style="light" />
+      </ThemeProvider>
     </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+  },
+});

@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -18,7 +19,7 @@ type Mode = "signin" | "signup";
 
 export default function AuthScreen() {
   const router = useRouter();
-  const { signInWithEmail, signUpWithEmail, signInWithGoogle, signInWithApple, signInWithGitHub, loading: authLoading } =
+  const { user, signInWithEmail, signUpWithEmail, signInWithGoogle, signInWithApple, signInWithGitHub, loading: authLoading } =
     useAuth();
 
   const [mode, setMode] = useState<Mode>("signin");
@@ -31,10 +32,20 @@ export default function AuthScreen() {
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
+  // If user is already logged in, redirect to admin
+  useEffect(() => {
+    if (!authLoading && user) {
+      console.log("AuthScreen: User already logged in, redirecting to admin");
+      router.replace("/(admin)");
+    }
+  }, [user, authLoading]);
+
+  // Show loading state while checking session
   if (authLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
@@ -48,16 +59,18 @@ export default function AuthScreen() {
 
     setLoading(true);
     try {
+      console.log("AuthScreen: Attempting email auth, mode:", mode);
       if (mode === "signin") {
         await signInWithEmail(email, password);
-        router.replace("/(admin)");
+        console.log("AuthScreen: Sign-in successful, navigation will be handled by AuthContext");
       } else {
         await signUpWithEmail(email, password, name);
-        setSuccessMessage("Account created! Please check your email to verify your account.");
+        console.log("AuthScreen: Sign-up successful");
+        setSuccessMessage("Account created successfully!");
         setShowSuccessModal(true);
-        // Don't redirect immediately, let user see success message
       }
     } catch (error: any) {
+      console.error("AuthScreen: Email auth failed:", error);
       setErrorMessage(error.message || "Authentication failed");
       setShowErrorModal(true);
     } finally {
@@ -68,6 +81,7 @@ export default function AuthScreen() {
   const handleSocialAuth = async (provider: "google" | "apple" | "github") => {
     setLoading(true);
     try {
+      console.log("AuthScreen: Attempting social auth with", provider);
       if (provider === "google") {
         await signInWithGoogle();
       } else if (provider === "apple") {
@@ -75,8 +89,9 @@ export default function AuthScreen() {
       } else if (provider === "github") {
         await signInWithGitHub();
       }
-      router.replace("/(admin)");
+      console.log("AuthScreen: Social auth successful, navigation will be handled by AuthContext");
     } catch (error: any) {
+      console.error("AuthScreen: Social auth failed:", error);
       setErrorMessage(error.message || "Authentication failed");
       setShowErrorModal(true);
     } finally {
@@ -91,14 +106,16 @@ export default function AuthScreen() {
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
-          <Text style={styles.title}>
-            {mode === "signin" ? "Sign In" : "Sign Up"}
+          <Text style={styles.title}>FCP Memorials</Text>
+          <Text style={styles.subtitle}>
+            {mode === "signin" ? "Sign in to continue" : "Create your account"}
           </Text>
 
           {mode === "signup" && (
             <TextInput
               style={styles.input}
               placeholder="Name (optional)"
+              placeholderTextColor="#999"
               value={name}
               onChangeText={setName}
               autoCapitalize="words"
@@ -108,6 +125,7 @@ export default function AuthScreen() {
           <TextInput
             style={styles.input}
             placeholder="Email"
+            placeholderTextColor="#999"
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -118,6 +136,7 @@ export default function AuthScreen() {
           <TextInput
             style={styles.input}
             placeholder="Password"
+            placeholderTextColor="#999"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -193,19 +212,13 @@ export default function AuthScreen() {
 
       <Modal
         visible={showSuccessModal}
-        onClose={() => {
-          setShowSuccessModal(false);
-          router.replace("/(admin)");
-        }}
+        onClose={() => setShowSuccessModal(false)}
         title="Success"
         message={successMessage}
         buttons={[
           {
             text: "Continue",
-            onPress: () => {
-              setShowSuccessModal(false);
-              router.replace("/(admin)");
-            },
+            onPress: () => setShowSuccessModal(false),
             style: "primary",
           },
         ]}
@@ -217,13 +230,18 @@ export default function AuthScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#1a1a1a",
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: "#1a1a1a",
+  },
+  loadingText: {
+    marginTop: 16,
+    color: "#fff",
+    fontSize: 16,
   },
   scrollContent: {
     flexGrow: 1,
@@ -236,19 +254,26 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: "bold",
+    marginBottom: 8,
+    textAlign: "center",
+    color: "#fff",
+  },
+  subtitle: {
+    fontSize: 16,
     marginBottom: 32,
     textAlign: "center",
-    color: "#000",
+    color: "#999",
   },
   input: {
     height: 50,
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: "#333",
     borderRadius: 8,
     paddingHorizontal: 16,
     marginBottom: 16,
     fontSize: 16,
-    backgroundColor: "#fff",
+    backgroundColor: "#2a2a2a",
+    color: "#fff",
   },
   primaryButton: {
     height: 50,
@@ -282,26 +307,26 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: "#ddd",
+    backgroundColor: "#333",
   },
   dividerText: {
     marginHorizontal: 12,
-    color: "#666",
+    color: "#999",
     fontSize: 14,
   },
   socialButton: {
     height: 50,
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: "#333",
     borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 12,
-    backgroundColor: "#fff",
+    backgroundColor: "#2a2a2a",
   },
   socialButtonText: {
     fontSize: 16,
-    color: "#000",
+    color: "#fff",
     fontWeight: "500",
   },
   appleButton: {

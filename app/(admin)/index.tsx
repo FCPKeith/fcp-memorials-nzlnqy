@@ -9,10 +9,10 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { colors, commonStyles } from '@/styles/commonStyles';
-import { useAuth } from '@/contexts/AuthContext';
-import { authenticatedGet } from '@/utils/api';
 import { Modal } from '@/components/ui/Modal';
+import { colors, commonStyles } from '@/styles/commonStyles';
+import { authenticatedGet } from '@/utils/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface RequestStats {
   total: number;
@@ -28,40 +28,31 @@ export default function AdminDashboard() {
   const { user, loading: authLoading, signOut } = useAuth();
   const [stats, setStats] = useState<RequestStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [showSignOutModal, setShowSignOutModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
+    console.log("AdminDashboard: Auth state changed", { user: user?.email, authLoading });
     if (!authLoading && !user) {
+      console.log("AdminDashboard: No user found, redirecting to auth");
       router.replace('/auth');
-    } else if (user) {
+    } else if (!authLoading && user) {
+      console.log("AdminDashboard: User authenticated, loading stats");
       loadStats();
     }
   }, [user, authLoading]);
 
   const loadStats = async () => {
-    console.log('[AdminDashboard] Loading stats');
-    setLoading(true);
-    setError(null);
-
     try {
-      const requests = await authenticatedGet<any[]>('/api/admin/memorial-requests');
-      
-      const statsData: RequestStats = {
-        total: requests.length,
-        submitted: requests.filter(r => r.request_status === 'submitted').length,
-        under_review: requests.filter(r => r.request_status === 'under_review').length,
-        approved: requests.filter(r => r.request_status === 'approved').length,
-        published: requests.filter(r => r.request_status === 'published').length,
-        rejected: requests.filter(r => r.request_status === 'rejected').length,
-      };
-
-      console.log('[AdminDashboard] Stats loaded:', statsData);
-      setStats(statsData);
-    } catch (err) {
-      console.error('[AdminDashboard] Error loading stats:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load stats';
-      setError(errorMessage);
+      setLoading(true);
+      console.log("AdminDashboard: Fetching request stats...");
+      const data = await authenticatedGet<RequestStats>('/api/admin/stats');
+      console.log("AdminDashboard: Stats loaded:", data);
+      setStats(data);
+    } catch (error: any) {
+      console.error("AdminDashboard: Failed to load stats:", error);
+      setErrorMessage(error.message || 'Failed to load statistics');
       setShowErrorModal(true);
     } finally {
       setLoading(false);
@@ -69,84 +60,131 @@ export default function AdminDashboard() {
   };
 
   const handleSignOut = async () => {
+    console.log("AdminDashboard: User confirmed sign out");
+    setShowSignOutModal(false);
     try {
       await signOut();
-      router.replace('/auth');
-    } catch (err) {
-      console.error('[AdminDashboard] Error signing out:', err);
+      console.log("AdminDashboard: Sign out complete");
+    } catch (error: any) {
+      console.error("AdminDashboard: Sign out error:", error);
+      setErrorMessage(error.message || 'Failed to sign out');
+      setShowErrorModal(true);
     }
   };
 
   if (authLoading || loading) {
     return (
-      <View style={[commonStyles.container, styles.centerContent]}>
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[commonStyles.body, styles.loadingText]}>Loading dashboard...</Text>
+        <Text style={styles.loadingText}>Loading dashboard...</Text>
       </View>
     );
   }
 
+  if (!user) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Redirecting to login...</Text>
+      </View>
+    );
+  }
+
+  const userEmail = user.email || 'Admin';
+
   return (
-    <ScrollView style={commonStyles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Admin Dashboard</Text>
-        <Text style={styles.subtitle}>FCP Memorials</Text>
+        <View>
+          <Text style={styles.welcomeText}>Welcome back</Text>
+          <Text style={styles.emailText}>{userEmail}</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.signOutButton}
+          onPress={() => setShowSignOutModal(true)}
+        >
+          <Text style={styles.signOutButtonText}>Sign Out</Text>
+        </TouchableOpacity>
       </View>
 
       {stats && (
         <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{stats.total}</Text>
-            <Text style={styles.statLabel}>Total Requests</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{stats.submitted}</Text>
-            <Text style={styles.statLabel}>Submitted</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{stats.under_review}</Text>
-            <Text style={styles.statLabel}>Under Review</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{stats.approved}</Text>
-            <Text style={styles.statLabel}>Approved</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{stats.published}</Text>
-            <Text style={styles.statLabel}>Published</Text>
+          <Text style={styles.sectionTitle}>Request Statistics</Text>
+          
+          <View style={styles.statsGrid}>
+            <View style={styles.statCard}>
+              <Text style={styles.statValue}>{stats.total}</Text>
+              <Text style={styles.statLabel}>Total Requests</Text>
+            </View>
+            
+            <View style={styles.statCard}>
+              <Text style={styles.statValue}>{stats.submitted}</Text>
+              <Text style={styles.statLabel}>Submitted</Text>
+            </View>
+            
+            <View style={styles.statCard}>
+              <Text style={styles.statValue}>{stats.under_review}</Text>
+              <Text style={styles.statLabel}>Under Review</Text>
+            </View>
+            
+            <View style={styles.statCard}>
+              <Text style={styles.statValue}>{stats.approved}</Text>
+              <Text style={styles.statLabel}>Approved</Text>
+            </View>
+            
+            <View style={styles.statCard}>
+              <Text style={styles.statValue}>{stats.published}</Text>
+              <Text style={styles.statLabel}>Published</Text>
+            </View>
+            
+            <View style={styles.statCard}>
+              <Text style={styles.statValue}>{stats.rejected}</Text>
+              <Text style={styles.statLabel}>Rejected</Text>
+            </View>
           </View>
         </View>
       )}
 
       <View style={styles.actionsContainer}>
+        <Text style={styles.sectionTitle}>Quick Actions</Text>
+        
         <TouchableOpacity
-          style={commonStyles.button}
-          onPress={() => router.push('/(admin)/requests' as any)}
+          style={styles.actionButton}
+          onPress={() => router.push('/(admin)/requests')}
         >
-          <Text style={commonStyles.buttonText}>View All Requests</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[commonStyles.button, styles.secondaryButton]}
-          onPress={handleSignOut}
-        >
-          <Text style={commonStyles.buttonText}>Sign Out</Text>
+          <Text style={styles.actionButtonText}>View All Requests</Text>
         </TouchableOpacity>
       </View>
+
+      <Modal
+        visible={showSignOutModal}
+        onClose={() => setShowSignOutModal(false)}
+        title="Sign Out"
+        message="Are you sure you want to sign out?"
+        buttons={[
+          {
+            text: "Cancel",
+            onPress: () => setShowSignOutModal(false),
+            style: "cancel",
+          },
+          {
+            text: "Sign Out",
+            onPress: handleSignOut,
+            style: "destructive",
+          },
+        ]}
+      />
 
       <Modal
         visible={showErrorModal}
         onClose={() => setShowErrorModal(false)}
         title="Error"
-        message={error || 'An error occurred'}
+        message={errorMessage}
         buttons={[
           {
-            text: 'Retry',
-            onPress: () => {
-              setShowErrorModal(false);
-              loadStats();
-            },
-            style: 'primary',
+            text: "OK",
+            onPress: () => setShowErrorModal(false),
+            style: "primary",
           },
         ]}
       />
@@ -155,61 +193,98 @@ export default function AdminDashboard() {
 }
 
 const styles = StyleSheet.create({
-  centerContent: {
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    backgroundColor: colors.background,
   },
   loadingText: {
     marginTop: 16,
-  },
-  content: {
-    padding: 24,
+    color: colors.text,
+    fontSize: 16,
   },
   header: {
-    marginBottom: 32,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    paddingTop: 60,
+    backgroundColor: colors.card,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: '600',
-    color: colors.text,
+  welcomeText: {
+    fontSize: 14,
+    color: colors.textSecondary,
     marginBottom: 4,
   },
-  subtitle: {
-    fontSize: 16,
-    color: colors.textSecondary,
+  emailText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  signOutButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: colors.error,
+  },
+  signOutButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   statsContainer: {
+    padding: 20,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 16,
+  },
+  statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
-    marginBottom: 32,
   },
   statCard: {
     flex: 1,
-    minWidth: 150,
+    minWidth: '45%',
     backgroundColor: colors.card,
+    padding: 16,
     borderRadius: 12,
-    padding: 20,
     borderWidth: 1,
     borderColor: colors.border,
-    alignItems: 'center',
   },
   statValue: {
-    fontSize: 36,
-    fontWeight: '600',
+    fontSize: 32,
+    fontWeight: 'bold',
     color: colors.primary,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   statLabel: {
     fontSize: 14,
     color: colors.textSecondary,
-    textAlign: 'center',
   },
   actionsContainer: {
-    gap: 12,
+    padding: 20,
   },
-  secondaryButton: {
-    backgroundColor: colors.highlight,
+  actionButton: {
+    backgroundColor: colors.primary,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
