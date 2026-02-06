@@ -196,7 +196,138 @@ Name: FCP Admin
 
 ---
 
-## ⚠️ Known Issues
+## 🚨 CRITICAL ISSUE: Backend Authentication Broken
+
+### ⚠️ AUTHENTICATION BLOCKER
+
+**Status:** The backend authentication system is **BROKEN** and requires immediate manual intervention.
+
+**Issue:** Email/password login and session validation are not working.
+
+**Symptoms:**
+- Email login returns 400 errors for valid credentials
+- Sessions are not being created in the database
+- Bearer tokens are not being validated
+- Users cannot sign in or maintain sessions
+
+**Root Cause:** The Better Auth integration in the Specific framework is not properly configured or is malfunctioning.
+
+### What's Broken (Backend Issues)
+
+#### 1. Email/Password Login (POST /api/auth/sign-in/email)
+- ❌ Returns 400 errors for valid credentials
+- ❌ Not validating email/password against users table
+- ❌ Not returning session tokens in response
+- **Expected Response:**
+  ```json
+  {
+    "user": { "id": "...", "email": "...", "name": "..." },
+    "session": { "token": "...", "expiresAt": "..." }
+  }
+  ```
+
+#### 2. Session Validation (GET /api/auth/get-session)
+- ❌ Not accepting Bearer tokens in Authorization header
+- ❌ Not validating tokens against sessions table
+- ❌ Not returning user objects for valid sessions
+- **Expected Response:**
+  ```json
+  {
+    "user": { "id": "...", "email": "...", "name": "..." }
+  }
+  ```
+
+#### 3. Session Creation
+- ❌ Sessions not being created in `sessions` table on successful login
+- ❌ Session tokens not being generated (should be UUID or JWT)
+- ❌ Session expiration not being set (should be ~30 days)
+- **Required Fields:**
+  - `session_id` (UUID)
+  - `user_id` (foreign key to users table)
+  - `token` (secure random string)
+  - `expires_at` (timestamp)
+  - `created_at` (timestamp)
+
+### What's Working (Frontend)
+
+The frontend is **production-ready** and correctly implements:
+
+- ✅ Better Auth client properly configured
+- ✅ Email/password login UI
+- ✅ Session persistence with SecureStore
+- ✅ Automatic session restoration on app launch
+- ✅ Bearer token injection in API calls
+- ✅ Protected route guards
+- ✅ Error handling with modals
+
+**The frontend requires NO changes.** It is correctly sending credentials and expecting standard Better Auth responses.
+
+### Required Backend Fixes
+
+The backend team or platform provider must:
+
+1. **Fix Email/Password Validation**
+   - Properly hash and compare passwords
+   - Query users table by email
+   - Return user object on successful validation
+
+2. **Fix Session Creation**
+   - Generate secure session token (UUID or JWT)
+   - Insert session into `sessions` table
+   - Set expiration time (e.g., 30 days from now)
+   - Return session token in response
+
+3. **Fix Session Validation**
+   - Accept `Authorization: Bearer {token}` header
+   - Query `sessions` table by token
+   - Check if session is expired
+   - Return user object if valid, 401 if invalid
+
+4. **Fix CORS Configuration**
+   - Allow requests from frontend origin
+   - Allow credentials (cookies/tokens) in CORS headers
+
+5. **Ensure Better Auth Compatibility**
+   - The frontend uses `@better-auth/expo` which expects standard Better Auth responses
+   - Session endpoint must work with Better Auth's `getSession()` method
+
+### Testing the Fix
+
+Once the backend is fixed, test with:
+
+**Test Credentials:**
+```
+Email: test@example.com
+Password: password123
+```
+
+**Test Flow:**
+1. POST `/api/auth/sign-in/email` with credentials → Should return session token
+2. GET `/api/auth/get-session` with `Authorization: Bearer {token}` → Should return user object
+3. Invalid token should return 401 Unauthorized
+
+### Timeline Required
+
+**Question for Platform Provider:**
+
+Can this platform fully repair backend authentication (email login + session persistence) without requiring custom backend code or additional fees?
+
+**If yes:**
+- Provide timeline for fix
+- Confirm manual backend intervention will occur
+- Confirm email/password login will issue valid sessions
+
+**If no:**
+- Confirm this is a platform limitation
+- User may need to migrate to another platform
+
+### Workaround
+
+**None available.** Authentication is a critical blocker. The app cannot function without working authentication.
+
+---
+
+## ⚠️ Other Known Issues
 
 ### Apple Sign-In Error
 
@@ -331,8 +462,37 @@ GET    /api/auth/oauth-callback/apple      Apple OAuth callback
 
 ## 📝 Summary
 
-**Integration Status:** ✅ **COMPLETE**
+**Integration Status:** ⚠️ **BLOCKED BY BACKEND AUTHENTICATION**
 
-All backend integration work is finished. The frontend is fully functional and ready for testing. The only remaining task is configuring Apple OAuth credentials on the backend, which is a backend-only configuration change.
+### Frontend Status: ✅ COMPLETE
 
-**No further frontend integration work is needed.**
+All frontend integration work is finished. The frontend is production-ready and correctly implements:
+- Better Auth client with email/password + OAuth
+- Session persistence and restoration
+- Protected route guards
+- API integration with Bearer token authentication
+- Error handling and loading states
+
+**No frontend changes are needed.**
+
+### Backend Status: 🚨 CRITICAL BLOCKER
+
+The backend authentication system is **broken** and requires immediate manual intervention:
+- Email/password login returns 400 errors
+- Sessions are not being created
+- Bearer tokens are not being validated
+
+**The app cannot function until the backend authentication is fixed.**
+
+### Next Steps
+
+1. **Backend Team:** Fix authentication system (see "CRITICAL ISSUE" section above)
+2. **Platform Provider:** Confirm if manual intervention is possible or if this is a platform limitation
+3. **Frontend Team:** No action needed - integration is complete
+
+### Decision Required
+
+**Can this platform fully repair backend authentication without requiring custom backend code or additional fees?**
+
+If yes: Provide timeline and confirm manual intervention will occur.
+If no: Confirm this is a platform limitation so the user can migrate without further delay.
