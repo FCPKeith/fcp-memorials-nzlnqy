@@ -46,10 +46,24 @@ export default function AdminDashboard() {
   const loadStats = async () => {
     try {
       setLoading(true);
-      console.log("AdminDashboard: Fetching request stats...");
-      const data = await authenticatedGet<RequestStats>('/api/admin/stats');
-      console.log("AdminDashboard: Stats loaded:", data);
-      setStats(data);
+      console.log("AdminDashboard: Fetching memorial requests to calculate stats...");
+      
+      // Fetch all memorial requests
+      const requests = await authenticatedGet<any[]>('/api/admin/memorial-requests');
+      console.log("AdminDashboard: Loaded requests:", requests.length);
+      
+      // Calculate stats from the requests
+      const calculatedStats: RequestStats = {
+        total: requests.length,
+        submitted: requests.filter(r => r.request_status === 'submitted').length,
+        under_review: requests.filter(r => r.request_status === 'under_review').length,
+        approved: requests.filter(r => r.request_status === 'approved').length,
+        published: requests.filter(r => r.request_status === 'published').length,
+        rejected: requests.filter(r => r.request_status === 'rejected').length,
+      };
+      
+      console.log("AdminDashboard: Stats calculated:", calculatedStats);
+      setStats(calculatedStats);
     } catch (error: any) {
       console.error("AdminDashboard: Failed to load stats:", error);
       setErrorMessage(error.message || 'Failed to load statistics');
