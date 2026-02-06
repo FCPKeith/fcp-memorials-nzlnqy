@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { eq, and } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import type { App } from '../index.js';
+import { sendMemorialRequestNotification } from '../services/emailService.js';
 
 // Tier pricing
 const TIER_PRICES: Record<string, number> = {
@@ -33,6 +34,7 @@ export function registerMemorialRequestRoutes(app: App, fastify: FastifyInstance
       discount_requested?: boolean;
       discount_type?: string;
       documentation_upload?: string;
+      country?: string;
     };
   }>(
     '/api/memorial-requests',
@@ -64,6 +66,7 @@ export function registerMemorialRequestRoutes(app: App, fastify: FastifyInstance
             discount_requested: { type: 'boolean' },
             discount_type: { type: 'string', enum: ['military', 'first_responder'] },
             documentation_upload: { type: 'string' },
+            country: { type: 'string' },
           },
         },
         response: {
@@ -95,6 +98,7 @@ export function registerMemorialRequestRoutes(app: App, fastify: FastifyInstance
         discount_requested = false,
         discount_type,
         documentation_upload,
+        country,
       } = request.body as {
         requester_name: string;
         requester_email: string;
@@ -110,6 +114,7 @@ export function registerMemorialRequestRoutes(app: App, fastify: FastifyInstance
         discount_requested?: boolean;
         discount_type?: string;
         documentation_upload?: string;
+        country?: string;
       };
 
       app.logger.info(
@@ -153,6 +158,7 @@ export function registerMemorialRequestRoutes(app: App, fastify: FastifyInstance
             payment_amount: payment_amount as any,
             request_status: 'submitted',
             payment_status: 'pending',
+            country: country || null,
           } as any)
           .returning();
 
@@ -162,6 +168,34 @@ export function registerMemorialRequestRoutes(app: App, fastify: FastifyInstance
           { requestId: createdRequest.id, payment_amount },
           'Memorial request created successfully'
         );
+
+        // Send email notification asynchronously (non-blocking)
+        sendMemorialRequestNotification(
+          {
+            id: createdRequest.id,
+            requester_name: createdRequest.requester_name,
+            requester_email: createdRequest.requester_email,
+            loved_one_name: createdRequest.loved_one_name,
+            birth_date: createdRequest.birth_date ? createdRequest.birth_date.toString() : null,
+            death_date: createdRequest.death_date ? createdRequest.death_date.toString() : null,
+            story_notes: createdRequest.story_notes,
+            media_uploads: createdRequest.media_uploads as string[],
+            location_info: createdRequest.location_info,
+            latitude: createdRequest.latitude ? createdRequest.latitude.toString() : null,
+            longitude: createdRequest.longitude ? createdRequest.longitude.toString() : null,
+            tier_selected: createdRequest.tier_selected,
+            discount_requested: createdRequest.discount_requested,
+            discount_type: createdRequest.discount_type,
+            created_at: createdRequest.created_at,
+            country: createdRequest.country,
+          },
+          app.logger
+        ).catch((error) => {
+          app.logger.error(
+            { err: error, requestId: createdRequest.id },
+            'Error sending memorial request notification (non-blocking, continuing anyway)'
+          );
+        });
 
         return reply.status(201).send({
           id: createdRequest.id,

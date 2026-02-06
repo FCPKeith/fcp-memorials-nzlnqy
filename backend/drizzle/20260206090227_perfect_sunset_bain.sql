@@ -1,0 +1,1 @@
+ALTER TABLE "memorial_requests" ADD COLUMN "country" text;

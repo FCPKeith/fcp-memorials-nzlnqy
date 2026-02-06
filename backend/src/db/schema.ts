@@ -53,6 +53,7 @@ export const memorial_requests = pgTable('memorial_requests', {
   payment_amount: decimal('payment_amount', { precision: 10, scale: 2 }).notNull(),
   stripe_payment_id: text('stripe_payment_id'),
   request_status: text('request_status').default('submitted').notNull(), // 'submitted', 'under_review', 'approved', 'published', 'rejected'
+  country: text('country'), // Country name or code
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
